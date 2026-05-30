@@ -47,6 +47,16 @@ div[data-testid="stForm"] {
 div[data-testid="stForm"] div[data-testid="stTextInput"] {
     display: none !important;
 }
+/* Botão de envio do Streamlit responsivo */
+div[data-testid="stForm"] .stButton>button,
+.stButton>button {
+    width: auto !important;
+    max-width: 360px !important;
+    margin: 0 auto !important;
+    display: block !important;
+    min-height: 44px !important;
+    padding: 0.8rem 1.2rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -77,7 +87,14 @@ body{
     color:var(--text);
     font-family:sans-serif;
     margin:0;
-    padding:30px;
+    padding:20px 16px 30px;
+}
+h1 {
+    font-size: clamp(32px, 6vw, 44px);
+    margin-bottom: 0.4rem;
+}
+p {
+    font-size: clamp(14px, 2vw, 16px);
 }
 .weather-card{
     background:var(--card);
@@ -100,6 +117,7 @@ body{
 </style>
 </head>
 <body>
+<br><br>
 
 <div class="w-full max-w-2xl mx-auto">
     <div class="text-center mb-8">
@@ -213,25 +231,53 @@ async function consultar(cidade){
 </html>
 """
 
-# Renderiza o painel principal do HTML com a caixa de busca
-st.components.v1.html(HTML, height=480, scrolling=True)
+# Renderiza o painel principal do HTML com a caixa de busca em duas colunas
+col1, col2 = st.columns([2, 1])
 
-# Formulário Ponte (Os inputs text existem no DOM do Python/HTML mas somem visualmente via CSS)
-with st.form("ponte_dados_oculta", clear_on_submit=False):
-    cidade_st = st.text_input("C", key="st_cid")
-    temp_st = st.text_input("T", key="st_tmp")
-    cond_st = st.text_input("O", key="st_cnd")
-    
-    st.markdown("<div class='w-full max-w-2xl mx-auto' style='max-width: 42rem; margin: 0 auto; padding: 0 30px;'>", unsafe_allow_html=True)
-    
-    # O único componente do formulário visível para o usuário interagir
-    enviar_groq = st.form_submit_button("Gerar Insights Inteligentes", type="primary", use_container_width=True)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+with col1:
+    st.components.v1.html(HTML, height=560, scrolling=True)
+
+with col2:
+    st.markdown(
+        "<div style='display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:16px; padding: 16px 8px;'>"
+        "<div style='text-align:center;'>"
+        "<br><br><h2 style='margin:0; font-size:1.9rem; color:#ffffff;'>Gerar Insights</h2>"
+        "</div>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    with st.form("ponte_dados_oculta", clear_on_submit=False):
+        cidade_st = st.text_input("C", key="st_cid")
+        temp_st = st.text_input("T", key="st_tmp")
+        cond_st = st.text_input("O", key="st_cnd")
+
+        st.markdown(
+            "<div style='width:100%; display:flex; justify-content:center; padding: 0 8px;'>"
+            "<div style='width:100%; max-width:320px;'>",
+            unsafe_allow_html=True
+        )
+
+        is_cidade_empty = not cidade_st or not cidade_st.strip()
+        
+        st.markdown(f"""
+        <style>
+        .disabled-btn-wrapper button {{
+            cursor: {'not-allowed' if is_cidade_empty else 'pointer'} !important;
+            opacity: {'0.6' if is_cidade_empty else '1'} !important;
+        }}
+        </style>
+        <div class="disabled-btn-wrapper">
+        """, unsafe_allow_html=True)
+
+        enviar_groq = st.form_submit_button("Gerar Insights Inteligentes", type="primary")
+
+        st.markdown("</div></div></div>", unsafe_allow_html=True)
+
+    response_slot = st.empty()
 
 # Execução e retorno da IA
 if enviar_groq:
-    st.markdown("<div class='w-full max-w-2xl mx-auto' style='max-width: 42rem; margin: 0 auto; padding: 0 30px;'>", unsafe_allow_html=True)
     if not cidade_st:
         st.warning("Selecione uma localidade na lista de sugestões acima para liberar os parâmetros de análise.")
     elif not client:
@@ -257,12 +303,11 @@ if enviar_groq:
                 
                 resposta = completion.choices[0].message.content
                 
-                st.markdown(f"""
-                <div style="background: #0b1220; border-left: 5px solid #06b6d4; padding: 20px; border-radius: 12px; margin-top: 15px; color: #e5e7eb; font-family: sans-serif; border: 1px solid #1f2937;">
+                response_slot.markdown(f"""
+                <div style="background: #0b1220; border-left: 5px solid #06b6d4; padding: 20px; border-radius: 12px; margin-top: 15px; color: #e5e7eb; font-family: sans-serif; border: 1px solid #1f2937; max-width: 100%;">
                     <h4 style="color: #06b6d4; margin-top: 0; font-weight: bold; margin-bottom: 10px;">🤖 Recomendações ClimAI (Groq)</h4>
                     <div style="font-size: 14px; line-height: 1.6; white-space: pre-wrap;">{resposta}</div>
                 </div>
                 """, unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Erro ao chamar a API do Groq: {e}")
-    st.markdown("</div>", unsafe_allow_html=True)
